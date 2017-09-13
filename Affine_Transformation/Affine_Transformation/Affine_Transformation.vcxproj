@@ -19,8 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{1C83D628-D235-4983-BA1F-AC1DCF5DF8F7}</ProjectGuid>
-    <RootNamespace>TDOA</RootNamespace>
+    <ProjectGuid>{FA4746EF-D8B6-40CC-9AD4-90665A85F1B4}</ProjectGuid>
+    <RootNamespace>Affine_Transformation</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -111,10 +111,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="tdoa.cpp" />
+    <ClCompile Include="affine_transformation.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="combination.cl" />
+    <None Include="affine.cl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

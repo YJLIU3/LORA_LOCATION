@@ -7,8 +7,6 @@ using namespace std;
 #pragma warning(disable:4996)
 
 
-#define C 3*10^8
-
 int nodes = 5;
 int number_of_location0 = 5;
 int number_of_location1 = number_of_location0;
@@ -137,7 +135,7 @@ int CL_init()
 	clReleaseMemObject(buffer_input2);
 	clReleaseMemObject(buffer_output);
 	clReleaseContext(context);
-
+	return 0;
 }
 
 int main()
