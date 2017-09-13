@@ -8,19 +8,23 @@ using namespace std;
 
 #define PI	3.141592653
 
+
 long int C = 3 * 10 ^ 8;
 
+//Input data to get Hyperbola
 double t1, t2;
 double X1, Y1, X2, Y2;
 
 double delta_D1 = fabs(t1 - t2)*C;
 
+//Hyperbola paramaters
 double a = delta_D1 / 2;
 
 double focus = sqrt((X1 - X2)*(X1 - X2) + (Y1 - Y2)*(Y1 - Y2));
 
 double b = sqrt(focus*focus - a*a);
 
+//midpoint to get affine translate
 double midle_x = (X1 + X2) / 2;
 double midle_y = (Y1 + Y2) / 2;
 
