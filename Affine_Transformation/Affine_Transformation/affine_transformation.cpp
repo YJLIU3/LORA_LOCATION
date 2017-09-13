@@ -125,10 +125,14 @@ int CL_init()
 
 	kernel = clCreateKernel(program, "affine", NULL);
 
+
+
 	clSetKernelArg(kernel, 0, sizeof(cl_mem), &buffer_sigma);
 
 	clSetKernelArg(kernel, 3, sizeof(cl_mem), &buffer_outx);
 	clSetKernelArg(kernel, 3, sizeof(cl_mem), &buffer_outy);
+
+
 
 	clEnqueueNDRangeKernel(cmdQueue, kernel, 1, NULL, globalWorkSize, NULL, 0, NULL, NULL);
 
