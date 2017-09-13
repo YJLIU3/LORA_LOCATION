@@ -9,24 +9,7 @@ using namespace std;
 #define PI	3.141592653
 
 
-long int C = 3 * 10 ^ 8;
 
-//Input data to get Hyperbola
-double t1, t2;
-double X1, Y1, X2, Y2;
-
-double delta_D1 = fabs(t1 - t2)*C;
-
-//Hyperbola paramaters
-double a = delta_D1 / 2;
-
-double focus = sqrt((X1 - X2)*(X1 - X2) + (Y1 - Y2)*(Y1 - Y2));
-
-double b = sqrt(focus*focus - a*a);
-
-//midpoint to get affine translate
-double midle_x = (X1 + X2) / 2;
-double midle_y = (Y1 + Y2) / 2;
 
 float get_theta(double x1, double x2, double y1, double y2)
 {
@@ -41,7 +24,7 @@ float get_theta(double x1, double x2, double y1, double y2)
 
 }
 
-float theta = get_theta(X1, X2, Y1, Y2);
+
 
 bool GetFileData(const char* fname, string& str)
 {
@@ -63,6 +46,37 @@ bool GetFileData(const char* fname, string& str)
 
 int CL_init()
 {
+	double C = 300000000.0;
+
+	//Input data to get Hyperbola
+	double t1 = 5.0 / 3000000.0, t2 = 5.0 / 3000000.0;
+	double X1 = 0.0, Y1 = 0.0, X2 = 0.0, Y2 = 1000.0;
+	
+	double delta_t;
+	if (t1 > t2)
+		delta_t = t1 - t2;
+	else
+		delta_t = t2 - t1;
+
+	double delta_D1 = delta_t*C;
+
+	printf("delta = %lf\n",delta_D1);
+
+	//Hyperbola paramaters
+	double a = delta_D1 / 2;
+
+	double focus = sqrt((X1 - X2)*(X1 - X2) + (Y1 - Y2)*(Y1 - Y2));
+
+	double b = sqrt(focus*focus - a*a);
+
+	//midpoint to get affine translate
+	double midle_x = (X1 + X2) / 2;
+	double midle_y = (Y1 + Y2) / 2;
+
+	float theta = get_theta(X1, X2, Y1, Y2);
+	printf("theta = %lf\n", theta);
+	
+
 	string code_file;
 
 	if (false == GetFileData("affine.cl", code_file))
@@ -97,10 +111,10 @@ int CL_init()
 	{
 		sigma[i] = i/1000;
 	}
-	for (int i = 0; i < number_of_point; i++)
-	{
-		printf("%d", sigma[i]);
-	}
+	//for (int i = 0; i < number_of_point; i++)
+	//{
+	//	printf("%d", sigma[i]);
+	//}
 
 	err = clGetPlatformIDs(1, &platform_id, NULL);
 
@@ -131,10 +145,15 @@ int CL_init()
 
 
 
-	clSetKernelArg(kernel, 0, sizeof(cl_mem), &buffer_sigma);
+	clSetKernelArg(kernel, 0, sizeof(cl_double), &a);
+	clSetKernelArg(kernel, 1, sizeof(cl_double), &b);
+	clSetKernelArg(kernel, 2, sizeof(cl_double), &midle_x);
+	clSetKernelArg(kernel, 3, sizeof(cl_double), &midle_y);
+	clSetKernelArg(kernel, 4, sizeof(cl_float), &theta);
+	clSetKernelArg(kernel, 5, sizeof(cl_mem), &buffer_sigma);
 
-	clSetKernelArg(kernel, 3, sizeof(cl_mem), &buffer_outx);
-	clSetKernelArg(kernel, 3, sizeof(cl_mem), &buffer_outy);
+	clSetKernelArg(kernel, 6, sizeof(cl_mem), &buffer_outx);
+	clSetKernelArg(kernel, 7, sizeof(cl_mem), &buffer_outy);
 
 
 
@@ -143,10 +162,12 @@ int CL_init()
 	clEnqueueReadBuffer(cmdQueue, buffer_outx, CL_TRUE, 0, out_datasize, buf_out_x, 0, NULL, NULL);
 	clEnqueueReadBuffer(cmdQueue, buffer_outy, CL_TRUE, 0, out_datasize, buf_out_y, 0, NULL, NULL);
 
-	for (int i = 0; i < number_of_point; i++)
-	{
-		printf("%f,%f--", buf_out_x[i], buf_out_y[i]);
-	}
+	//for (int i = 0; i < number_of_point; i++)
+	//{
+	//	printf("%f,%f--", buf_out_x[i], buf_out_y[i]);
+	//	if ((i + 1) % 6 == 0)
+	//		printf("\n");
+	//}
 
 	clReleaseKernel(kernel);
 	clReleaseProgram(program);
@@ -162,6 +183,7 @@ int main()
 {
 
 	printf("Please input number of nodes:\n");
+
 	CL_init();
 	getchar();
 

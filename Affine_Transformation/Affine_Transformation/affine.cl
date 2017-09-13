@@ -1,31 +1,17 @@
-__kernel void combination(__global int* IN0, __global int* IN1, __global int* IN2, __global int* OUT)
+#pragma OPENCL EXTENSION cl_khr_fp64 : enable
+__kernel void affine(double a, double b, double mid_x, double mid_y, float theta, __global double* sigema, __global double* outx, __global double* outy )
 {
+	int id = get_global_id(0);
 
 
-	int in0 = get_global_id(0);
-	int in1 = get_global_id(1);
-	int in2 = get_global_id(2);
+	
+	double x = a / cos(sigema[id]);
+	double y = b*tan(sigema[id]);
 
-	int location = (in0 * 25 + in1 * 5 + in2) * 3;
+//	printf("%lf %lf \n", x, y);
 
-	printf("in0 = %d\n", in0);
-	printf("in1 = %d\n", in1);
-	printf("in2 = %d\n", in2);
-
-	if ((in0 < in1) && (in1< in2))
-	{
-		printf("if = true\n");
-
-
-		OUT[location] = IN0[in0];
-		OUT[location + 1] = IN1[in1];
-		OUT[location + 2] = IN2[in2];
-	}
-	else
-	{
-		OUT[location] = 0;
-		OUT[location + 1] = 0;
-		OUT[location + 2] = 0;
-	}
+	//Affine traslation
+	outx[id] = x*cos(theta) - y*sin(theta) + mid_x;
+	outy[id] = x*sin(theta) + y*cos(theta) + mid_y;
 
 }
