@@ -11,11 +11,11 @@ using namespace std;
 
 
 
-float get_theta(double x1, double x2, double y1, double y2)
+float get_theta(float x1, float x2, float y1, float y2)
 {
 	float theta;
 	if (x1 - x2 == 0)
-		return PI / 2;
+		return PI / 2.0;
 	else
 	{
 		float k = (y2 - y1) / (x2 - x1);
@@ -49,7 +49,7 @@ int CL_init()
 	double C = 300000000.0;
 
 	//Input data to get Hyperbola
-	double t1 = 5.0 / 3000000.0, t2 = 5.0 / 3000000.0;
+	double t1 = 4.0 / 3000000.0, t2 = 6.0 / 3000000.0;
 	double X1 = 0.0, Y1 = 0.0, X2 = 0.0, Y2 = 1000.0;
 	
 	double delta_t;
@@ -99,7 +99,7 @@ int CL_init()
 
 	cl_int err;
 
-	int number_of_point = 6238;
+	int number_of_point = 6283;
 
 	float *sigma = new float[number_of_point];
 	float *buf_out_x = new float[number_of_point];
@@ -167,14 +167,20 @@ int CL_init()
 	clEnqueueReadBuffer(cmdQueue, buffer_outx, CL_TRUE, 0, datasize, buf_out_x, 0, NULL, NULL);
 	clEnqueueReadBuffer(cmdQueue, buffer_outy, CL_TRUE, 0, datasize, buf_out_y, 0, NULL, NULL);
 
-	//FILE *fp;
-	//fp = fopen("hyperbola.xls", "w");
-	//for (int i = 0; i < number_of_point; i++)
-	//{
-	//	printf( "%f\t,%f\n", buf_out_x[i], buf_out_y[i]);
-	//	fprintf(fp,"%f\t,%f\n", buf_out_x[i], buf_out_y[i]);
-
-	//}
+	FILE *fp;
+	fp = fopen("hyperbola.xls", "w");
+	for (int i = 0; i < number_of_point; i++)
+	{
+//		printf( "%f\t,%f\n", buf_out_x[i], buf_out_y[i]);
+//		fprintf(fp,"%f\t%f\n", buf_out_x[i], buf_out_y[i]);
+		//if (i > 6270)
+		//{
+			printf("i = %d", i);
+			printf("%f\t%f\n", buf_out_x[i], buf_out_y[i]);
+			fprintf(fp, "%f\t%f\n", buf_out_x[i], buf_out_y[i]);
+		//}
+	}
+	fclose(fp);
 
 	clReleaseKernel(kernel);
 	clReleaseProgram(program);
