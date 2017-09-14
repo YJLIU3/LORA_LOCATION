@@ -44,37 +44,58 @@ bool GetFileData(const char* fname, string& str)
 	return true;
 }
 
+double delta_t(double t1, double t2)
+{
+	if (t1 > t2)
+		return t1 - t2;
+	else
+		return t2 - t1;
+}
+
 int CL_init()
 {
 	double C = 300000000.0;
 
 	//Input data to get Hyperbola
-	double t1 = 4.0 / 3000000.0, t2 = 6.0 / 3000000.0;
-	double X1 = 0.0, Y1 = 0.0, X2 = 0.0, Y2 = 1000.0;
+	double  t1 = 0.0, t2 = 0.0, t3 = 0.0;
+	double	X1 = 0.0, Y1 = 0.0,
+			X2 = 0.0, Y2 = 0.0,
+			X3 = 0.0, Y3 = 0.0;
 	
-	double delta_t;
-	if (t1 > t2)
-		delta_t = t1 - t2;
-	else
-		delta_t = t2 - t1;
+	float start_sigma = 0;
+	float stop_sigma = 2.0*PI;
+	int step_division = 1000;
 
-	double delta_D1 = delta_t*C;
-
-	printf("delta = %lf\n",delta_D1);
+	double delta_d12 = delta_t(t1, t2)*C;
+	double delta_d13 = delta_t(t1, t3)*C;
+	double delta_d23 = delta_t(t2, t3)*C;
 
 	//Hyperbola paramaters
-	double a = delta_D1 / 2;
+	double a12 = delta_d12 / 2;
+	double a13 = delta_d13 / 2;
+	double a23 = delta_d23 / 2;
 
-	double focus = sqrt((X1 - X2)*(X1 - X2) + (Y1 - Y2)*(Y1 - Y2))/2.0;
+	double focus_12 = sqrt((X1 - X2)*(X1 - X2) + (Y1 - Y2)*(Y1 - Y2)) / 2.0;
+	double focus_13 = sqrt((X1 - X3)*(X1 - X3) + (Y1 - Y3)*(Y1 - Y3)) / 2.0;
+	double focus_23 = sqrt((X3 - X2)*(X1 - X2) + (Y3 - Y2)*(Y3 - Y2)) / 2.0;
 
-	double b = sqrt(focus*focus - a*a);
+	double b12 = sqrt(focus_12*focus_12 - a12*a12);
+	double b13 = sqrt(focus_13*focus_13 - a13*a13);
+	double b23 = sqrt(focus_23*focus_23 - a23*a23);
 
 	//midpoint to get affine translate
-	double midle_x = (X1 + X2) / 2;
-	double midle_y = (Y1 + Y2) / 2;
+	double midle_x12 = (X1 + X2) / 2;
+	double midle_y12 = (Y1 + Y2) / 2;
+	double midle_x13 = (X1 + X3) / 2;
+	double midle_y13 = (Y1 + Y3) / 2;
+	double midle_x23 = (X3 + X2) / 2;
+	double midle_y23 = (Y3 + Y2) / 2;
 
-	float theta = get_theta(X1, X2, Y1, Y2);
-	printf("theta = %lf\n", theta);
+
+	float theta12 = get_theta(X1, X2, Y1, Y2);
+	float theta13 = get_theta(X1, X3, Y1, Y3);
+	float theta23 = get_theta(X3, X2, Y3, Y2);
+
 	
 
 	string code_file;
@@ -90,29 +111,35 @@ int CL_init()
 	cl_platform_id platform_id = NULL;
 	cl_context context;
 	cl_command_queue cmdQueue;
-	cl_mem buffer_sigma, buffer_outx, buffer_outy;
+	cl_mem cl_buf_sigma1, cl_buf_sigma2, cl_buf_sigma3, cl_buf_outx, cl_buf_outy;
 	cl_program program;
 	cl_kernel kernel = NULL;
 
-	size_t globalWorkSize[1];
-	globalWorkSize[0] =6283;
+	size_t globalWorkSize[3];
+	globalWorkSize[0] = (int)(stop_sigma - start_sigma) * step_division;
+	globalWorkSize[1] = (int)(stop_sigma - start_sigma) * step_division;
+	globalWorkSize[2] = (int)(stop_sigma - start_sigma) * step_division;
 
 	cl_int err;
 
-	int number_of_point = 6283;
+	int number_of_point = (int)(stop_sigma - start_sigma) * step_division;
+	int number_of_outpoint = number_of_point*number_of_point*number_of_point;
 
-	float *sigma = new float[number_of_point];
-	float *buf_out_x = new float[number_of_point];
-	float *buf_out_y = new float[number_of_point];
+	float *sigma1 = new float[number_of_point];
+	float *sigma2 = new float[number_of_point];
+	float *sigma3 = new float[number_of_point];
+
+	float *buf_out_x = new float[number_of_outpoint];
+	float *buf_out_y = new float[number_of_outpoint];
 
 	size_t datasize = sizeof(float)*number_of_point;
+	size_t out_datasize = sizeof(float)*number_of_outpoint;
 
 	for (int i = 0; i < number_of_point; i++)
 	{
-		sigma[i] = i/1000.0;
-		printf("%lf--i=%d\t", sigma[i],i);
-		if ((i + 1) / 6 == 0)
-			printf("\n");
+		sigma1[i] = i / step_division + start_sigma;
+		sigma2[i] = i / step_division + start_sigma;
+		sigma3[i] = i / step_division + start_sigma;
 	}
 
 	err = clGetPlatformIDs(1, &platform_id, NULL);
@@ -128,20 +155,22 @@ int CL_init()
 
 	cmdQueue = clCreateCommandQueue(context, device, 0, NULL);
 
-	buffer_sigma = clCreateBuffer(context, CL_MEM_READ_ONLY, datasize, NULL, NULL);
+	cl_buf_sigma1 = clCreateBuffer(context, CL_MEM_READ_ONLY, datasize, NULL, NULL);
+	cl_buf_sigma2 = clCreateBuffer(context, CL_MEM_READ_ONLY, datasize, NULL, NULL);
+	cl_buf_sigma3 = clCreateBuffer(context, CL_MEM_READ_ONLY, datasize, NULL, NULL);
 
-	buffer_outx = clCreateBuffer(context, CL_MEM_WRITE_ONLY, datasize, NULL, NULL);
-	buffer_outy = clCreateBuffer(context, CL_MEM_WRITE_ONLY, datasize, NULL, NULL);
+	cl_buf_outx = clCreateBuffer(context, CL_MEM_WRITE_ONLY, out_datasize, NULL, NULL);
+	cl_buf_outy = clCreateBuffer(context, CL_MEM_WRITE_ONLY, out_datasize, NULL, NULL);
 
-	clEnqueueWriteBuffer(cmdQueue, buffer_sigma, CL_TRUE, 0, datasize, sigma, 0, NULL, NULL);
+	clEnqueueWriteBuffer(cmdQueue, cl_buf_sigma1, CL_TRUE, 0, datasize, sigma1, 0, NULL, NULL);
+	clEnqueueWriteBuffer(cmdQueue, cl_buf_sigma2, CL_TRUE, 0, datasize, sigma2, 0, NULL, NULL);
+	clEnqueueWriteBuffer(cmdQueue, cl_buf_sigma3, CL_TRUE, 0, datasize, sigma3, 0, NULL, NULL);
 
 	program = clCreateProgramWithSource(context, 1, (const char**)&buf_code, NULL, NULL);
 
 
 	cl_device_fp_config DeviceDouble;
 	cl_int fff = clGetDeviceInfo(device, CL_DEVICE_DOUBLE_FP_CONFIG, sizeof(cl_device_fp_config),&DeviceDouble,NULL);
-
-	printf("device if support fp double : %d\n", DeviceDouble==0?0:1);
 
 	clBuildProgram(program, 1, &device, "-D FP_64", NULL, NULL);
 
@@ -150,44 +179,53 @@ int CL_init()
 
 
 
-	clSetKernelArg(kernel, 0, sizeof(cl_double), &a);
-	clSetKernelArg(kernel, 1, sizeof(cl_double), &b);
-	clSetKernelArg(kernel, 2, sizeof(cl_double), &midle_x);
-	clSetKernelArg(kernel, 3, sizeof(cl_double), &midle_y);
-	clSetKernelArg(kernel, 4, sizeof(cl_float), &theta);
-	clSetKernelArg(kernel, 5, sizeof(cl_mem), &buffer_sigma);
+	clSetKernelArg(kernel, 0, sizeof(cl_double), &a12);
+	clSetKernelArg(kernel, 1, sizeof(cl_double), &a13);
+	clSetKernelArg(kernel, 2, sizeof(cl_double), &a23);
+	clSetKernelArg(kernel, 3, sizeof(cl_double), &b12);
+	clSetKernelArg(kernel, 4, sizeof(cl_double), &b13);
+	clSetKernelArg(kernel, 5, sizeof(cl_double), &b23);
+	clSetKernelArg(kernel, 6, sizeof(cl_double), &midle_x12);
+	clSetKernelArg(kernel, 7, sizeof(cl_double), &midle_y12);
+	clSetKernelArg(kernel, 8, sizeof(cl_double), &midle_x13);
+	clSetKernelArg(kernel, 9, sizeof(cl_double), &midle_y13);
+	clSetKernelArg(kernel, 10, sizeof(cl_double), &midle_x23);
+	clSetKernelArg(kernel, 11, sizeof(cl_double), &midle_y23);
+	clSetKernelArg(kernel, 12, sizeof(cl_float), &theta12);
+	clSetKernelArg(kernel, 13, sizeof(cl_float), &theta13);
+	clSetKernelArg(kernel, 14, sizeof(cl_float), &theta23);
+	clSetKernelArg(kernel, 15, sizeof(cl_mem), &cl_buf_sigma1);
+	clSetKernelArg(kernel, 16, sizeof(cl_mem), &cl_buf_sigma2);
+	clSetKernelArg(kernel, 17, sizeof(cl_mem), &cl_buf_sigma3);
 
-	clSetKernelArg(kernel, 6, sizeof(cl_mem), &buffer_outx);
-	clSetKernelArg(kernel, 7, sizeof(cl_mem), &buffer_outy);
+	clSetKernelArg(kernel, 18, sizeof(cl_mem), &cl_buf_outx);
+	clSetKernelArg(kernel, 19, sizeof(cl_mem), &cl_buf_outy);
 
 
 
 	clEnqueueNDRangeKernel(cmdQueue, kernel, 1, NULL, globalWorkSize, NULL, 0, NULL, NULL);
 
-	clEnqueueReadBuffer(cmdQueue, buffer_outx, CL_TRUE, 0, datasize, buf_out_x, 0, NULL, NULL);
-	clEnqueueReadBuffer(cmdQueue, buffer_outy, CL_TRUE, 0, datasize, buf_out_y, 0, NULL, NULL);
+	clEnqueueReadBuffer(cmdQueue, cl_buf_outx, CL_TRUE, 0, datasize, buf_out_x, 0, NULL, NULL);
+	clEnqueueReadBuffer(cmdQueue, cl_buf_outy, CL_TRUE, 0, datasize, buf_out_y, 0, NULL, NULL);
 
 	FILE *fp;
 	fp = fopen("hyperbola.xls", "w");
 	for (int i = 0; i < number_of_point; i++)
 	{
-//		printf( "%f\t,%f\n", buf_out_x[i], buf_out_y[i]);
-//		fprintf(fp,"%f\t%f\n", buf_out_x[i], buf_out_y[i]);
-		//if (i > 6270)
-		//{
 			printf("i = %d", i);
 			printf("%f\t%f\n", buf_out_x[i], buf_out_y[i]);
 			fprintf(fp, "%f\t%f\n", buf_out_x[i], buf_out_y[i]);
-		//}
 	}
 	fclose(fp);
 
 	clReleaseKernel(kernel);
 	clReleaseProgram(program);
 	clReleaseCommandQueue(cmdQueue);
-	clReleaseMemObject(buffer_sigma);
-	clReleaseMemObject(buffer_outx);
-	clReleaseMemObject(buffer_outy);
+	clReleaseMemObject(cl_buf_sigma1);
+	clReleaseMemObject(cl_buf_sigma2);
+	clReleaseMemObject(cl_buf_sigma3);
+	clReleaseMemObject(cl_buf_outx);
+	clReleaseMemObject(cl_buf_outy);
 	clReleaseContext(context);
 	return 0;
 }
@@ -195,7 +233,6 @@ int CL_init()
 int main()
 {
 
-	printf("Please input number of nodes:\n");
 
 	CL_init();
 	getchar();
