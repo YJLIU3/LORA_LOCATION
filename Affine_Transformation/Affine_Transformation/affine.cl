@@ -5,13 +5,15 @@ __kernel void affine(double a, double b, double mid_x, double mid_y, float theta
 
 
 	
-	double x = a / cos(sigema[id]);
-	double y = b*tan(sigema[id]);
+	 outx[id] = a / cos(sigema[id]);
+	 outy[id] = b*tan(sigema[id]);
+//	 if(id>6270)
+	 printf("%d---sigma=% f\t", id, sigema[id]);
+	// printf("---%f%fcos=%f tan=%f sigma=%f %f %f--- \n", a,b,cos(sigema[id]), tan(sigema[id]), sigema[id],outx[id], outy[id]);
+	//printf("%lf %lf \n", cos(sigema[id]), tan(sigema[id]));
+	//printf("%lf %lf \n", x, y);
 
-//	printf("%lf %lf \n", x, y);
-
-	//Affine traslation
-	outx[id] = x*cos(theta) - y*sin(theta) + mid_x;
-	outy[id] = x*sin(theta) + y*cos(theta) + mid_y;
+	//outx[id] = x*cos(theta) - y*sin(theta) + mid_x;
+	//outy[id] = x*sin(theta) + y*cos(theta) + mid_y;
 
 }

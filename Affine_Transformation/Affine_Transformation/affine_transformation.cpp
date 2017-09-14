@@ -65,7 +65,7 @@ int CL_init()
 	//Hyperbola paramaters
 	double a = delta_D1 / 2;
 
-	double focus = sqrt((X1 - X2)*(X1 - X2) + (Y1 - Y2)*(Y1 - Y2));
+	double focus = sqrt((X1 - X2)*(X1 - X2) + (Y1 - Y2)*(Y1 - Y2))/2.0;
 
 	double b = sqrt(focus*focus - a*a);
 
@@ -95,26 +95,25 @@ int CL_init()
 	cl_kernel kernel = NULL;
 
 	size_t globalWorkSize[1];
-	globalWorkSize[0] = 2*PI*1000;
+	globalWorkSize[0] =6283;
 
 	cl_int err;
 
-	int number_of_point = 2 * PI * 1000;
+	int number_of_point = 6238;
 
 	float *sigma = new float[number_of_point];
 	float *buf_out_x = new float[number_of_point];
 	float *buf_out_y = new float[number_of_point];
 
-	size_t in_datasize = sizeof(float)*number_of_point;
-	size_t out_datasize = sizeof(float)*number_of_point;
+	size_t datasize = sizeof(float)*number_of_point;
+
 	for (int i = 0; i < number_of_point; i++)
 	{
-		sigma[i] = i/1000;
+		sigma[i] = i/1000.0;
+		printf("%lf--i=%d\t", sigma[i],i);
+		if ((i + 1) / 6 == 0)
+			printf("\n");
 	}
-	//for (int i = 0; i < number_of_point; i++)
-	//{
-	//	printf("%d", sigma[i]);
-	//}
 
 	err = clGetPlatformIDs(1, &platform_id, NULL);
 
@@ -129,14 +128,20 @@ int CL_init()
 
 	cmdQueue = clCreateCommandQueue(context, device, 0, NULL);
 
-	buffer_sigma = clCreateBuffer(context, CL_MEM_READ_ONLY, in_datasize, NULL, NULL);
+	buffer_sigma = clCreateBuffer(context, CL_MEM_READ_ONLY, datasize, NULL, NULL);
 
-	buffer_outx = clCreateBuffer(context, CL_MEM_WRITE_ONLY, out_datasize, NULL, NULL);
-	buffer_outy = clCreateBuffer(context, CL_MEM_WRITE_ONLY, out_datasize, NULL, NULL);
+	buffer_outx = clCreateBuffer(context, CL_MEM_WRITE_ONLY, datasize, NULL, NULL);
+	buffer_outy = clCreateBuffer(context, CL_MEM_WRITE_ONLY, datasize, NULL, NULL);
 
-	clEnqueueWriteBuffer(cmdQueue, buffer_sigma, CL_FALSE, 0, in_datasize, sigma, 0, NULL, NULL);
+	clEnqueueWriteBuffer(cmdQueue, buffer_sigma, CL_TRUE, 0, datasize, sigma, 0, NULL, NULL);
 
 	program = clCreateProgramWithSource(context, 1, (const char**)&buf_code, NULL, NULL);
+
+
+	cl_device_fp_config DeviceDouble;
+	cl_int fff = clGetDeviceInfo(device, CL_DEVICE_DOUBLE_FP_CONFIG, sizeof(cl_device_fp_config),&DeviceDouble,NULL);
+
+	printf("device if support fp double : %d\n", DeviceDouble==0?0:1);
 
 	clBuildProgram(program, 1, &device, "-D FP_64", NULL, NULL);
 
@@ -159,14 +164,16 @@ int CL_init()
 
 	clEnqueueNDRangeKernel(cmdQueue, kernel, 1, NULL, globalWorkSize, NULL, 0, NULL, NULL);
 
-	clEnqueueReadBuffer(cmdQueue, buffer_outx, CL_TRUE, 0, out_datasize, buf_out_x, 0, NULL, NULL);
-	clEnqueueReadBuffer(cmdQueue, buffer_outy, CL_TRUE, 0, out_datasize, buf_out_y, 0, NULL, NULL);
+	clEnqueueReadBuffer(cmdQueue, buffer_outx, CL_TRUE, 0, datasize, buf_out_x, 0, NULL, NULL);
+	clEnqueueReadBuffer(cmdQueue, buffer_outy, CL_TRUE, 0, datasize, buf_out_y, 0, NULL, NULL);
 
+	//FILE *fp;
+	//fp = fopen("hyperbola.xls", "w");
 	//for (int i = 0; i < number_of_point; i++)
 	//{
-	//	printf("%f,%f--", buf_out_x[i], buf_out_y[i]);
-	//	if ((i + 1) % 6 == 0)
-	//		printf("\n");
+	//	printf( "%f\t,%f\n", buf_out_x[i], buf_out_y[i]);
+	//	fprintf(fp,"%f\t,%f\n", buf_out_x[i], buf_out_y[i]);
+
 	//}
 
 	clReleaseKernel(kernel);
